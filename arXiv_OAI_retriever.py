@@ -5,7 +5,7 @@ import re
 from datetime import datetime
 import requests
 import time
-import sys
+from pymongo import MongoClient
 
 """Arguments for querying from OAI-PMH
 
@@ -27,6 +27,30 @@ resumptionToken is used) that specifies the metadataPrefix of the format
 that should be included in the metadata part of the returned records.
 Records should be included only for items from which the metadata format
 """
+
+
+class Paper():
+    """Contains publication date and abstract for each paper"""
+
+    def __init__(self, date=None, abstr=None, cat='physics:hep-ex',
+                 title=None):
+        self.abstract = abstr
+        self.date = date
+        self.cat = cat
+        self.title = title
+
+    def write_mongoDB(self):
+        """Write an entry of the type
+        entry = {
+            date: '2012-04-12',
+            abstract: 'Text of the abstract'
+        }
+        into mongoDB"""
+        json = self.__dict__
+        client = MongoClient()
+        papers = client.arXivpapers.hepex
+        print "Writing to database..."
+        papers.save(json)
 
 
 class OAIFetcher():
@@ -51,8 +75,26 @@ class OAIFetcher():
             'resumptionToken': token
         }
 
+    def query(self, **kwargs):
+        """Get articles from OAI in XML format. Returns a big text with all
+        1000 articles
+        """
+
+        print 'Querying OAI with params %s...' % (kwargs)
+
+        # Build URL for request
+        _url_params = '&'.join(['%s=%s' % (key, val) for key, val
+                               in kwargs.iteritems()])
+        url = '%s?%s' % (self._baseURL, _url_params)
+        print 'Querying OAI with url %s' % (url)
+
+        time.sleep(20)
+        req = requests.get(url)
+
+        return req.text
+
     def fetch(self, setSpec='physics:hep-ex', date_from=None, date_until=None):
-        """Fetch data from the OAI.
+        """Fetch data from the OAI. 
         """
 
         self._params['set'] = setSpec
@@ -65,7 +107,9 @@ class OAIFetcher():
 
         xml = self.query(**self._params)
         soup = BeautifulSoup(xml)
-        docs = [soup]
+        self.soup = soup
+        self.create_papers()
+
         token = ''
         if soup.find('resumptiontoken'):
             token = soup.find('resumptiontoken').text
@@ -75,26 +119,21 @@ class OAIFetcher():
             self.set_params(token=token)
             xml = self.query(**self._params)
             soup = BeautifulSoup(xml)
-            docs.append(soup)
+            self.soup = soup
+            self.create_papers()
             if soup.find('resumptiontoken'):
                 token = soup.find('resumptiontoken').text
 
-        return docs
+    def create_papers(self):
+        """Takes a big soup with n(=1000) papers, creates an instance of the
+        Paper class for every paper in the soup"""
 
-    def query(self, **kwargs):
-        '''Get articles from OAI in XML format.
-        '''
+        for record in self.soup.findAll('record'):
+            date = record.find('created').text
+            abstract = record.find('abstract').text
+            cat = record.find('setspec').text
+            cat = cat.split(':')[1]
+            title = recond.find('title').text
 
-        print 'Querying OAI with params %s...' % (kwargs)
-
-        # Build URL for request
-        _url_params = '&'.join(['%s=%s' % (key, val) for key, val
-                               in kwargs.iteritems()])
-        url = '%s?%s' % (self._baseURL, _url_params)
-        print 'Querying OAI with url %s' % (url)
-
-        # Get and return XML from OAI
-        time.sleep(20)
-        req = requests.get(url)
-
-        return req.text
+            paper = Paper(date, abstract, cat, title)
+            paper.write_mongoDB()
