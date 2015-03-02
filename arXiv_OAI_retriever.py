@@ -46,10 +46,10 @@ class Paper():
             abstract: 'Text of the abstract'
         }
         into mongoDB"""
+
         json = self.__dict__
         client = MongoClient()
         papers = client.arXivpapers.hepex
-        print "Writing to database..."
         papers.save(json)
 
 
@@ -94,7 +94,7 @@ class OAIFetcher():
         return req.text
 
     def fetch(self, setSpec='physics:hep-ex', date_from=None, date_until=None):
-        """Fetch data from the OAI. 
+        """Fetch data from the OAI.
         """
 
         self._params['set'] = setSpec
@@ -133,7 +133,11 @@ class OAIFetcher():
             abstract = record.find('abstract').text
             cat = record.find('setspec').text
             cat = cat.split(':')[1]
-            title = recond.find('title').text
+            title = record.find('title').text
 
             paper = Paper(date, abstract, cat, title)
             paper.write_mongoDB()
+
+if __name__ == '__main__':
+    fetcher = OAIFetcher()
+    fetcher.fetch()
