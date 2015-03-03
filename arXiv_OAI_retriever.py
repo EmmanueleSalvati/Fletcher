@@ -6,6 +6,7 @@ from datetime import datetime
 import requests
 import time
 from pymongo import MongoClient
+import pickle as pkl
 
 """Arguments for querying from OAI-PMH
 
@@ -49,7 +50,7 @@ class Paper():
 
         json = self.__dict__
         client = MongoClient()
-        papers = client.arXivpapers.hepex
+        papers = client.arXivpapers.hepph
         papers.save(json)
 
 
@@ -88,13 +89,13 @@ class OAIFetcher():
         url = '%s?%s' % (self._baseURL, _url_params)
         print 'Querying OAI with url %s' % (url)
 
-        time.sleep(20)
+        time.sleep(30)
         req = requests.get(url)
 
         return req.text
 
     def fetch(self, setSpec='physics:hep-ex', date_from=None, date_until=None):
-        """Fetch data from the OAI.
+        """Fetch data from the OAI. Returns a list of tokens
         """
 
         self._params['set'] = setSpec
@@ -110,9 +111,11 @@ class OAIFetcher():
         self.soup = soup
         self.create_papers()
 
+        tokens_list = []
         token = ''
         if soup.find('resumptiontoken'):
             token = soup.find('resumptiontoken').text
+            tokens_list.append(token)
         del soup
 
         while token:
@@ -123,6 +126,9 @@ class OAIFetcher():
             self.create_papers()
             if soup.find('resumptiontoken'):
                 token = soup.find('resumptiontoken').text
+                tokens_list.append(token)
+
+        return tokens_list
 
     def create_papers(self):
         """Takes a big soup with n(=1000) papers, creates an instance of the
@@ -140,4 +146,6 @@ class OAIFetcher():
 
 if __name__ == '__main__':
     fetcher = OAIFetcher()
-    fetcher.fetch()
+    my_tokens = fetcher.fetch(setSpec='physics:hep-ex', date_from='2011-01-31')
+    with open('tokens_list.pkl', 'w') as pklfile:
+        pkl.dump(my_tokens, pklfile)
