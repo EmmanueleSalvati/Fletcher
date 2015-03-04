@@ -1,10 +1,9 @@
 """Functions to connect to the MongoDB on DigitalOcean cloud"""
 
-# import urllib
 from pymongo import MongoClient
 from textblob import TextBlob
 from collections import Counter
-import nltk
+import socket
 
 
 def str_to_datetime(datestr):
@@ -14,15 +13,6 @@ def str_to_datetime(datestr):
 
     date = parse(datestr)
     return date
-
-
-# def count_particles(abstract):
-#     """Adds counts to the global Counter() of particles"""
-
-#     words = abstract.words.singularize()
-#     for particle in particles:
-#         if particle in words:
-#             counter[particle] += 1
 
 
 def particles_in_abstract(words):
@@ -70,11 +60,14 @@ def loop_events(cursor=None):
 if __name__ == '__main__':
     # URI instructions are here:
     # http://docs.mongodb.org/manual/reference/connection-string/
+    # import urllib
     # password = urllib.quote_plus(mypassword)
 
-    URI = 'mongodb://104.236.210.21'
-    client = MongoClient(host=URI)
-    # client = MongoClient()
+    if socket.gethostname() == 'mcnulty-emmanuele':
+        client = MongoClient()
+    else:
+        URI = 'mongodb://104.236.210.21'
+        client = MongoClient(host=URI)
 
     KEYWORDS = ['electron', 'photon', 'muon', 'higgs', 'tau', 'proton',
                 'neutron', 'quark', 'top', 'strange', 'bottom', 'quark',
@@ -83,10 +76,7 @@ if __name__ == '__main__':
     hepex = client.arXivpapers.hepex
     hepph = client.arXivpapers.hepph
 
-    cursor = get_cursor()  # cursor = hepex.find()
-    # for record in cursor:
-    #     ABSTRACT = record['abstract']
-    #     abstract = TextBlob(ABSTRACT)
-    #     count_particles(abstract)
-
+    # Create a dictionary with [datetime]: [particles]
+    # and a simple Counter to quickly see how many particles are in total
+    cursor = get_cursor()
     (abs_dict, counter) = loop_events(cursor)
