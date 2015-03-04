@@ -16,18 +16,19 @@ def count_particles(abstract):
             counter[particle] += 1
 
 
-def get_cursor(collection=hepex, from_date=None, to_date=None):
-    """Returns the cursor in the given date range"""
+# def get_cursor(collection=hepex, from_date=None, to_date=None):
+#     """Returns the cursor in the given date range"""
 
-    collection.find()
+#     collection.find()
 
 if __name__ == '__main__':
     # URI instructions are here:
     # http://docs.mongodb.org/manual/reference/connection-string/
+    # password = urllib.quote_plus(mypassword)
 
-    # password = urllib.quote_plus('p0rcaccioInf@me')
-    # URI = 'mongodb://JerkFace:' + password + '@104.236.210.21'
-    # client = MongoClient(URI)
+    URI = 'mongodb://104.236.210.21'
+    client = MongoClient(host=URI)
+    # client = MongoClient()
 
     raw_particles = ['electron', 'photon', 'muon', 'higgs', 'tau']
     stemmer = nltk.stem.porter.PorterStemmer()
@@ -35,7 +36,6 @@ if __name__ == '__main__':
     for particle in raw_particles:
         particles.append(stemmer.stem(particle))
 
-    client = MongoClient()
     hepex = client.arXivpapers.hepex
 
     counter = Counter()
